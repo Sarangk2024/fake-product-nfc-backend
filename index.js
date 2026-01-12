@@ -173,6 +173,52 @@ const app = express();
 app.use(cors());
 app.use(express.json());
 
+// DEMO / MANUFACTURER REGISTER API
+app.post("/register", async (req, res) => {
+  const { productId } = req.body;
+
+  if (!productId) {
+    return res.status(400).json({ error: "productId required" });
+  }
+
+  try {
+    // 1️⃣ Check if already registered on blockchain
+    const exists = await contract.isProductRegistered(productId);
+    if (exists) {
+      return res.status(400).json({ error: "Product already registered" });
+    }
+
+    // 2️⃣ Register on blockchain (NOTE: needs signer)
+    const wallet = new ethers.Wallet(
+      process.env.PRIVATE_KEY,
+      provider
+    );
+
+    const signedContract = contract.connect(wallet);
+    const tx = await signedContract.registerProducts([productId]);
+    await tx.wait();
+
+    // 3️⃣ Generate secret
+    const secret = CryptoJS.SHA256(
+      crypto.randomBytes(16).toString("hex") + productId
+    ).toString();
+
+    // 4️⃣ Store secret
+    secrets[productId] = secret;
+    fs.writeFileSync(secretsPath, JSON.stringify(secrets, null, 2));
+
+    return res.json({
+      message: "Product registered successfully",
+      productId
+    });
+
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: "Registration failed" });
+  }
+});
+
+
 // In-memory challenges
 const activeChallenges = {};
 
