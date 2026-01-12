@@ -1,0 +1,83 @@
+# ==========================================
+# Operating System Files
+# ==========================================
+.DS_Store
+.AppleDouble
+.LSOverride
+Icon?
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+
+# ==========================================
+# Common Editor/IDE Files
+# ==========================================
+.vscode/
+!.vscode/settings.json
+!.vscode/tasks.json
+!.vscode/launch.json
+!.vscode/extensions.json
+.idea/
+*.swp
+*.swo
+*.sublime-project
+*.sublime-workspace
+
+# ==========================================
+# Node.js / JavaScript
+# ==========================================
+node_modules/
+jspm_packages/
+pnpm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+.npm
+.eslintcache
+dist/
+out/
+build/
+.next/
+.nuxt/
+
+# ==========================================
+# Python
+# ==========================================
+__pycache__/
+*.py[cod]
+*$py.class
+.venv/
+venv/
+ENV/
+env/
+.env
+.pytest_cache/
+.coverage
+htmlcov/
+build/
+dist/
+*.egg-info/
+
+# ==========================================
+# Java / Kotlin
+# ==========================================
+*.class
+*.log
+*.ctxt
+*.jar
+*.war
+*.ear
+target/
+.gradle/
+build/
+bin/
+
+# ==========================================
+# Environment Secrets (CRITICAL)
+# ==========================================
+.env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+*.pem
+*.key
