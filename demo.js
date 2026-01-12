@@ -32,8 +32,8 @@
 const CryptoJS = require("crypto-js");
 const secrets = require("./data/secrets.json");
 
-const productId = "PROD-1001";
-const challenge = "5c8f2772dd11fb9d"; // ← REAL challenge
+const productId = "5001";
+const challenge = "d5a673939a09d1ff"; // ← REAL challenge
 
 const secret = secrets[productId];
 

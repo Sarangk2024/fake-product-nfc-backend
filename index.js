@@ -151,7 +151,14 @@ const CONTRACT_ADDRESS = "0x7849215cFdB25b0028E4FF104B8fA1d1b98286aa";
 
 // ---------------- LOAD SECRETS ----------------
 const secretsPath = path.join(__dirname, "data", "secrets.json");
-const secrets = JSON.parse(fs.readFileSync(secretsPath, "utf-8"));
+
+// Ensure secrets file exists
+if (!fs.existsSync(secretsPath)) {
+  fs.mkdirSync(path.dirname(secretsPath), { recursive: true });
+  fs.writeFileSync(secretsPath, JSON.stringify({}));
+}
+
+let secrets = JSON.parse(fs.readFileSync(secretsPath, "utf-8"));
 
 // ---------------- LOAD CONTRACT ABI ----------------
 const contractABI =
@@ -173,7 +180,19 @@ const app = express();
 app.use(cors());
 app.use(express.json());
 
-// DEMO / MANUFACTURER REGISTER API
+// Store active challenges in memory
+const activeChallenges = {};
+
+// ---------------- ROUTES ----------------
+
+// Health check
+app.get("/", (req, res) => {
+  res.send("Backend running");
+});
+
+// ---------------- MANUFACTURER / ADMIN ----------------
+
+// Register product (called from UI)
 app.post("/register", async (req, res) => {
   const { productId } = req.body;
 
@@ -182,52 +201,55 @@ app.post("/register", async (req, res) => {
   }
 
   try {
-    // 1️⃣ Check if already registered on blockchain
+    // Check blockchain
     const exists = await contract.isProductRegistered(productId);
     if (exists) {
       return res.status(400).json({ error: "Product already registered" });
     }
 
-    // 2️⃣ Register on blockchain (NOTE: needs signer)
+    // Signer (manufacturer wallet)
     const wallet = new ethers.Wallet(
       process.env.PRIVATE_KEY,
       provider
     );
 
     const signedContract = contract.connect(wallet);
+
+    // Register on blockchain
     const tx = await signedContract.registerProducts([productId]);
     await tx.wait();
 
-    // 3️⃣ Generate secret
+    // Generate secret
     const secret = CryptoJS.SHA256(
       crypto.randomBytes(16).toString("hex") + productId
     ).toString();
 
-    // 4️⃣ Store secret
+    // Store secret
     secrets[productId] = secret;
     fs.writeFileSync(secretsPath, JSON.stringify(secrets, null, 2));
 
     return res.json({
-      message: "Product registered successfully",
+      success: true,
       productId
     });
 
   } catch (err) {
     console.error(err);
-    res.status(500).json({ error: "Registration failed" });
+    return res.status(500).json({ error: "Registration failed" });
   }
 });
 
-
-// In-memory challenges
-const activeChallenges = {};
-
-// ---------------- ROUTES ----------------
-
-// Health
-app.get("/", (req, res) => {
-  res.send("Backend running");
+// List registered products (for admin UI)
+app.get("/products", (req, res) => {
+  try {
+    const productList = Object.keys(secrets);
+    res.json({ products: productList });
+  } catch (err) {
+    res.status(500).json({ error: "Failed to load products" });
+  }
 });
+
+// ---------------- CUSTOMER VERIFICATION ----------------
 
 // STEP 1: Generate challenge
 app.post("/challenge", async (req, res) => {
@@ -238,12 +260,12 @@ app.post("/challenge", async (req, res) => {
   }
 
   try {
-    // Blockchain verification
+    // Verify product exists on blockchain
     const exists = await contract.isProductRegistered(productId);
     if (!exists) {
       return res.json({
         result: "FAKE",
-        reason: "Product not on blockchain",
+        reason: "Product not on blockchain"
       });
     }
 
@@ -267,7 +289,7 @@ app.post("/verify", (req, res) => {
   if (!productId || !response) {
     return res.json({
       result: "FAKE",
-      reason: "Missing data",
+      reason: "Missing data"
     });
   }
 
@@ -275,7 +297,7 @@ app.post("/verify", (req, res) => {
   if (!challenge) {
     return res.json({
       result: "FAKE",
-      reason: "No active challenge",
+      reason: "No active challenge"
     });
   }
 
@@ -283,11 +305,10 @@ app.post("/verify", (req, res) => {
   if (!secret) {
     return res.json({
       result: "FAKE",
-      reason: "Unknown product",
+      reason: "Unknown product"
     });
   }
 
-  // Verify hash
   const expected = CryptoJS.SHA256(
     secret + challenge
   ).toString();
@@ -299,7 +320,7 @@ app.post("/verify", (req, res) => {
   } else {
     return res.json({
       result: "FAKE",
-      reason: "Hash mismatch",
+      reason: "Hash mismatch"
     });
   }
 });
